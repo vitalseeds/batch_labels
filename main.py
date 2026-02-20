@@ -222,10 +222,8 @@ def render_page(
     if cfg is None:
         cfg = LabelConfig()
     msg_html = f'<p class="msg {message_class}">{message}</p>' if message else ""
-    preview_html = (
-        f'<div class="preview"><img src="{preview_src}" alt="Label preview"></div>'
-        if preview_src else ""
-    )
+    preview_style = "" if preview_src else ' style="display:none"'
+    preview_html = f'<div class="preview" id="preview-box"{preview_style}><img id="preview-img" src="{preview_src}" alt="Label preview"></div>'
     sku_script = ""
     if SKU_LIST:
         sku_json = json.dumps(sorted(SKU_LIST))
@@ -382,6 +380,36 @@ def render_page(
   </form>
   {preview_html}
   {sku_script}
+  <script>
+(function() {{
+  var form = document.querySelector('form');
+  var box  = document.getElementById('preview-box');
+  var img  = document.getElementById('preview-img');
+  var timer;
+
+  function refresh() {{
+    var sku   = form.querySelector('[name=sku]').value.trim();
+    var batch = form.querySelector('[name=batch]').value.trim();
+    if (!sku || !batch) return;
+    fetch('/preview-img', {{ method: 'POST', body: new FormData(form) }})
+      .then(function(r) {{ return r.json(); }})
+      .then(function(j) {{
+        if (j.src) {{
+          img.src = j.src;
+          box.style.display = '';
+        }} else {{
+          box.style.display = 'none';
+        }}
+      }})
+      .catch(function() {{}});
+  }}
+
+  function schedule() {{ clearTimeout(timer); timer = setTimeout(refresh, 500); }}
+
+  form.addEventListener('input',  schedule);
+  form.addEventListener('change', schedule);
+}})();
+  </script>
 </body>
 </html>"""
 
@@ -453,6 +481,37 @@ async def preview_label(
     similar = find_similar_skus(sku)
     preview_src = await zpl_preview(sku, batch, cfg)
     return render_page(sku=sku, batch=batch, copies=copies, preview_src=preview_src, similar_skus=similar, cfg=cfg)
+
+
+@app.post("/preview-img")
+async def preview_img(
+    sku: str = Form(""),
+    batch: str = Form(""),
+    label_width: float = Form(0.0),
+    label_height: float = Form(0.0),
+    label_dpi: int = Form(0),
+    sku_label_font: str = Form(""),
+    batch_label_font: str = Form(""),
+    sku_char_height: float = Form(0.0),
+    sku_char_width: float = Form(0.0),
+    batch_char_height: float = Form(0.0),
+    batch_char_width: float = Form(0.0),
+    sku_padding_left: float = Form(0.0),
+    sku_padding_top: float = Form(0.0),
+    batch_padding_bottom: float = Form(0.0),
+    batch_padding_right: float = Form(0.0),
+):
+    if not sku or not batch:
+        return {"src": ""}
+    cfg = _cfg_from_form(
+        label_width, label_height, label_dpi,
+        sku_label_font, batch_label_font,
+        sku_char_height, sku_char_width,
+        batch_char_height, batch_char_width,
+        sku_padding_left, sku_padding_top,
+        batch_padding_bottom, batch_padding_right,
+    )
+    return {"src": await zpl_preview(sku, batch, cfg)}
 
 
 @app.post("/print", response_class=HTMLResponse)
