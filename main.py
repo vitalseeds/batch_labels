@@ -24,17 +24,36 @@ PRINTER_PORT = int(os.getenv("PRINTER_PORT", "9100"))
 LABEL_WIDTH   = float(os.getenv("LABEL_WIDTH", "2.76"))   # 70mm
 LABEL_HEIGHT  = float(os.getenv("LABEL_HEIGHT", "1.42"))  # 36mm
 LABEL_DPI     = int(os.getenv("LABEL_DPI", "203"))
+# 0=scalable (use any size), A=9pt, B=11pt, D=18pt, E=28pt, F=26pt bold, G=60pt, H=21pt bold
+SKU_LABEL_FONT    = os.getenv("SKU_LABEL_FONT", "G")
+BATCH_LABEL_FONT  = os.getenv("SKU_LABEL_FONT", "1")
 
-# Label is 70×36mm landscape (560×288 dots at 203 DPI / 8 dots per mm).
-# SKU:   top-left,     5mm padding, ~20mm tall  → 160 dots high, 80 dots/char (fits 6 chars)
-# Batch: bottom-right, 5mm padding,  8mm tall   → 64 dots high, right-aligned via ^FB
+SKU_CHAR_HEIGHT   = float(os.getenv("SKU_CHAR_HEIGHT",   "18"))  # mm
+SKU_CHAR_WIDTH    = float(os.getenv("SKU_CHAR_WIDTH",    "12"))  # mm
+BATCH_CHAR_HEIGHT = float(os.getenv("BATCH_CHAR_HEIGHT",  "7"))  # mm
+BATCH_CHAR_WIDTH  = float(os.getenv("BATCH_CHAR_WIDTH",   "4"))  # mm
+
+SKU_PADDING_LEFT   = float(os.getenv("SKU_PADDING_LEFT",   "5"))  # mm from left edge
+SKU_PADDING_TOP    = float(os.getenv("SKU_PADDING_TOP",    "5"))  # mm from top edge
+BATCH_PADDING_BOTTOM = float(os.getenv("BATCH_PADDING_BOTTOM", "6"))  # mm from bottom edge
+BATCH_PADDING_RIGHT  = float(os.getenv("BATCH_PADDING_RIGHT",  "5"))  # mm from right edge
+
 
 def build_zpl(sku: str, batch: str) -> str:
     """Return ZPL for a 70×36mm landscape label."""
+    dpmm = LABEL_DPI / 25.4
+    sku_h   = round(SKU_CHAR_HEIGHT   * dpmm)
+    sku_w   = round(SKU_CHAR_WIDTH    * dpmm)
+    batch_h = round(BATCH_CHAR_HEIGHT * dpmm)
+    batch_w = round(BATCH_CHAR_WIDTH  * dpmm)
+    sku_x       = round(SKU_PADDING_LEFT * dpmm)
+    sku_y       = round(SKU_PADDING_TOP  * dpmm)
+    batch_y     = round((LABEL_HEIGHT * 25.4 - BATCH_CHAR_HEIGHT - BATCH_PADDING_BOTTOM) * dpmm)
+    batch_field = round((LABEL_WIDTH  * 25.4 - SKU_PADDING_LEFT  - BATCH_PADDING_RIGHT)  * dpmm)
     return (
         "^XA"
-        f"^FO40,40^A0N,160,80^FD{sku}^FS"                    # SKU: top-left, ~20mm high
-        f"^FO40,184^A0N,64,48^FB480,1,,R^FD{batch}^FS"       # Batch: bottom-right, 8mm high
+        f"^FO{sku_x},{sku_y}^A{SKU_LABEL_FONT}N,{sku_h},{sku_w}^FD{sku}^FS"
+        f"^FO{sku_x},{batch_y}^A{BATCH_LABEL_FONT}N,{batch_h},{batch_w}^FB{batch_field},1,,R^FD{batch}^FS"
         "^XZ"
     )
 
@@ -42,12 +61,16 @@ def build_zpl(sku: str, batch: str) -> str:
 def build_label(sku: str, batch: str) -> zpl_lib.Label:
     """Return a zpl.Label matching the same 70×36mm design."""
     dpmm = round(LABEL_DPI / 25.4)  # 203 DPI → 8 dpmm
-    label = zpl_lib.Label(LABEL_HEIGHT * 25.4, LABEL_WIDTH * 25.4, dpmm)
-    label.origin(5, 5)
-    label.write_text(sku, char_height=20, char_width=10)
+    label_w_mm = LABEL_WIDTH  * 25.4
+    label_h_mm = LABEL_HEIGHT * 25.4
+    batch_origin_y = label_h_mm - BATCH_CHAR_HEIGHT - BATCH_PADDING_BOTTOM
+    batch_line_w   = label_w_mm - SKU_PADDING_LEFT - BATCH_PADDING_RIGHT
+    label = zpl_lib.Label(label_h_mm, label_w_mm, dpmm)
+    label.origin(SKU_PADDING_LEFT, SKU_PADDING_TOP)
+    label.write_text(sku, char_height=SKU_CHAR_HEIGHT, char_width=SKU_CHAR_WIDTH, font=SKU_LABEL_FONT)
     label.endorigin()
-    label.origin(5, 23)
-    label.write_text(batch, char_height=8, char_width=6, line_width=60, justification="R")
+    label.origin(SKU_PADDING_LEFT, batch_origin_y)
+    label.write_text(batch, char_height=BATCH_CHAR_HEIGHT, char_width=BATCH_CHAR_WIDTH, line_width=batch_line_w, justification="R", font=BATCH_LABEL_FONT)
     label.endorigin()
     return label
 

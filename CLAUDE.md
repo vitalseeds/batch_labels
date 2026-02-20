@@ -34,6 +34,7 @@ Edit the constants at the top of `main.py`:
 | `LABEL_WIDTH`   | `4`             | Label width in inches          |
 | `LABEL_HEIGHT`  | `2`             | Label height in inches         |
 | `LABEL_DPI`     | `203`           | Printer DPI (GK420D = 203)     |
+| `LABEL_FONT`    | `0`             | ZPL font (`0`=scalable, `A`–`Z`=bitmap) |
 
 ## Running
 
