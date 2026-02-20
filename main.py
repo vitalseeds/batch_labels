@@ -5,9 +5,12 @@ Fill in the form, preview the label, and send it to the printer.
 
 import asyncio
 import base64
+import csv
 import os
 import socket
 import tempfile
+from contextlib import asynccontextmanager
+from difflib import get_close_matches
 
 import httpx
 import zpl as zpl_lib
@@ -17,7 +20,26 @@ from fastapi.responses import HTMLResponse
 
 load_dotenv()
 
-app = FastAPI()
+SKU_LIST: set[str] = set()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global SKU_LIST
+    sku_file = os.getenv("SKU_LIST_FILE")
+    if sku_file:
+        try:
+            with open(sku_file, newline="") as f:
+                reader = csv.DictReader(f)
+                col = (reader.fieldnames or ["SKU"])[0]
+                SKU_LIST = {row[col].strip() for row in reader if row[col].strip()}
+            print(f"Loaded {len(SKU_LIST)} SKUs from {sku_file!r} (column: {col!r})")
+        except OSError as e:
+            print(f"Warning: could not load SKU_LIST_FILE {sku_file!r}: {e}")
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 PRINTER_HOST = os.getenv("PRINTER_HOST", "192.168.1.100")
 PRINTER_PORT = int(os.getenv("PRINTER_PORT", "9100"))
@@ -37,6 +59,13 @@ SKU_PADDING_LEFT   = float(os.getenv("SKU_PADDING_LEFT",   "5"))  # mm from left
 SKU_PADDING_TOP    = float(os.getenv("SKU_PADDING_TOP",    "5"))  # mm from top edge
 BATCH_PADDING_BOTTOM = float(os.getenv("BATCH_PADDING_BOTTOM", "4"))  # mm from bottom edge
 BATCH_PADDING_RIGHT  = float(os.getenv("BATCH_PADDING_RIGHT",  "4"))  # mm from right edge
+
+
+def find_similar_skus(sku: str) -> list[str] | None:
+    """Return None if SKU is valid (or no list loaded), else a list of close matches."""
+    if not SKU_LIST or sku in SKU_LIST:
+        return None
+    return get_close_matches(sku, SKU_LIST, n=5, cutoff=0.4)
 
 
 def build_zpl(sku: str, batch: str) -> str:
@@ -121,6 +150,7 @@ def render_page(
     message: str = "",
     message_class: str = "",
     preview_src: str = "",
+    similar_skus: list[str] | None = None,
 ) -> str:
     """Build the full HTML page as a string."""
     msg_html = f'<p class="msg {message_class}">{message}</p>' if message else ""
@@ -128,6 +158,13 @@ def render_page(
         f'<div class="preview"><img src="{preview_src}" alt="Label preview"></div>'
         if preview_src else ""
     )
+    warn_html = ""
+    if similar_skus is not None:
+        note = ""
+        if similar_skus:
+            items = ", ".join(f"<strong>{s}</strong>" for s in similar_skus)
+            note = f" Did you mean: {items}?"
+        warn_html = f'<p class="msg warn">Unknown SKU: <strong>{sku}</strong></p><p><em>{note}</em></p></br>'
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -137,15 +174,18 @@ def render_page(
     body    {{ font-family: sans-serif; max-width: 480px; margin: 60px auto; padding: 0 16px; }}
     label   {{ display: block; margin-top: 14px; font-weight: bold; }}
     input   {{ width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; font-size: 1rem; }}
-    .buttons {{ margin-top: 20px; display: flex; gap: 10px; }}
+    .buttons {{ margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap; }}
     button  {{ padding: 10px 28px; border: none; cursor: pointer; font-size: 1rem; }}
     button.btn-print   {{ background: #222; color: #fff; }}
     button.btn-print:hover {{ background: #444; }}
     button.btn-preview {{ background: #fff; color: #222; border: 1px solid #222; }}
     button.btn-preview:hover {{ background: #f0f0f0; }}
+    button.btn-force   {{ background: #fff; color: #b71c1c; border: 1px solid #b71c1c; }}
+    button.btn-force:hover {{ background: #fdecea; }}
     .msg    {{ margin-top: 16px; padding: 10px 14px; border-radius: 4px; }}
     .ok     {{ background: #e8f5e9; border: 1px solid #4caf50; }}
     .err    {{ background: #fdecea; border: 1px solid #f44336; }}
+    .warn   {{ background: #fff8e1; border: 1px solid #ffc107; }}
     .preview     {{ margin-top: 24px; }}
     .preview img {{ max-width: 100%; border: 1px solid #ccc; }}
   </style>
@@ -153,6 +193,7 @@ def render_page(
 <body>
   <h1>Batch Label Printer</h1>
   {msg_html}
+  {warn_html}
   <form method="post" action="/print">
     <label>SKU</label>
     <input name="sku" value="{sku}" required pattern="[A-Za-z0-9-]+" placeholder="e.g. ToGD">
@@ -163,6 +204,7 @@ def render_page(
     <div class="buttons">
       <button class="btn-preview" type="submit" formaction="/preview">Preview</button>
       <button class="btn-print"   type="submit">Print Labels</button>
+      <button class="btn-force"   type="submit" name="force" value="1">Print Anyway</button>
     </div>
   </form>
   {preview_html}
@@ -181,8 +223,9 @@ async def preview_label(
     batch: str = Form(...),
     copies: int = Form(...),
 ):
+    similar = find_similar_skus(sku)
     preview_src = await zpl_preview(sku, batch)
-    return render_page(sku=sku, batch=batch, copies=copies, preview_src=preview_src)
+    return render_page(sku=sku, batch=batch, copies=copies, preview_src=preview_src, similar_skus=similar)
 
 
 @app.post("/print", response_class=HTMLResponse)
@@ -190,7 +233,13 @@ async def print_labels(
     sku: str = Form(...),
     batch: str = Form(...),
     copies: int = Form(...),
+    force: bool = Form(False),
 ):
+    if not force:
+        similar = find_similar_skus(sku)
+        if similar is not None:
+            return render_page(sku=sku, batch=batch, copies=copies, similar_skus=similar)
+
     zpl = build_zpl(sku, batch)
     preview_src = await labelary_preview(zpl)
 
