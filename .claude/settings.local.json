@@ -3,7 +3,10 @@
     "allow": [
       "Bash(uv run pytest:*)",
       "Bash(.venv/bin/python -m pytest:*)",
-      "Bash(uv add:*)"
+      "Bash(uv add:*)",
+      "WebFetch(domain:pypi.org)",
+      "WebFetch(domain:github.com)",
+      "Bash(uv run python:*)"
     ]
   }
 }
