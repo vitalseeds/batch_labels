@@ -4,19 +4,23 @@ Fill in the form, preview the label, and send it to the printer.
 """
 
 import base64
+import os
 import socket
 
 import httpx
+from dotenv import load_dotenv
 from fastapi import FastAPI, Form
 from fastapi.responses import HTMLResponse
 
+load_dotenv()
+
 app = FastAPI()
 
-PRINTER_HOST = "192.168.1.100"
-PRINTER_PORT = 9100
-LABEL_WIDTH = 4
-LABEL_HEIGHT = 2
-LABEL_DPI = 203
+PRINTER_HOST = os.getenv("PRINTER_HOST", "192.168.1.100")
+PRINTER_PORT = int(os.getenv("PRINTER_PORT", "9100"))
+LABEL_WIDTH   = int(os.getenv("LABEL_WIDTH", "4"))
+LABEL_HEIGHT  = int(os.getenv("LABEL_HEIGHT", "2"))
+LABEL_DPI     = int(os.getenv("LABEL_DPI", "203"))
 
 def build_zpl(sku: str, batch: str) -> str:
     """Return a ZPL string for one label showing the SKU barcode and batch."""

@@ -16,14 +16,18 @@ uv sync
 
 ## Configuration
 
-Edit the constants at the top of `main.py` to match your printer:
+Copy `.env.example` to `.env` and edit to match your printer:
 
-```python
-PRINTER_HOST = "192.168.1.100"  # your printer's IP
-PRINTER_PORT = 9100              # RAW TCP port — standard for Zebra
-LABEL_WIDTH  = 4                 # inches
-LABEL_HEIGHT = 2                 # inches
-LABEL_DPI    = 203               # GK420D native DPI
+```bash
+cp .env.example .env
+```
+
+```ini
+PRINTER_HOST=192.168.1.100   # printer IP
+PRINTER_PORT=9100            # RAW TCP port (Zebra standard)
+LABEL_WIDTH=4                # inches
+LABEL_HEIGHT=2               # inches
+LABEL_DPI=203                # GK420D native DPI
 ```
 
 ## Running
