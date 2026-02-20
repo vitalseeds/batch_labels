@@ -18,16 +18,20 @@ app = FastAPI()
 
 PRINTER_HOST = os.getenv("PRINTER_HOST", "192.168.1.100")
 PRINTER_PORT = int(os.getenv("PRINTER_PORT", "9100"))
-LABEL_WIDTH   = int(os.getenv("LABEL_WIDTH", "4"))
-LABEL_HEIGHT  = int(os.getenv("LABEL_HEIGHT", "2"))
+LABEL_WIDTH   = float(os.getenv("LABEL_WIDTH", "2.76"))   # 70mm
+LABEL_HEIGHT  = float(os.getenv("LABEL_HEIGHT", "1.42"))  # 36mm
 LABEL_DPI     = int(os.getenv("LABEL_DPI", "203"))
 
+# Label is 70×36mm landscape (560×288 dots at 203 DPI / 8 dots per mm).
+# SKU:   top-left,     5mm padding, ~20mm tall  → 160 dots high, 80 dots/char (fits 6 chars)
+# Batch: bottom-right, 5mm padding,  8mm tall   → 64 dots high, right-aligned via ^FB
+
 def build_zpl(sku: str, batch: str) -> str:
-    """Return a ZPL string for one label showing the SKU barcode and batch."""
+    """Return ZPL for a 70×36mm landscape label."""
     return (
         "^XA"
-        f"^FO40,20^A0N,45,35^FD{sku}^FS"           # SKU text
-        f"^FO40,100^A0N,30,25^FDBatch: {batch}^FS" # Batch number
+        f"^FO40,40^A0N,160,80^FD{sku}^FS"                    # SKU: top-left, ~20mm high
+        f"^FO40,184^A0N,64,48^FB480,1,,R^FD{batch}^FS"       # Batch: bottom-right, 8mm high
         "^XZ"
     )
 
