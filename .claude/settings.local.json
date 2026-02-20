@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv run pytest:*)",
+      "Bash(.venv/bin/python -m pytest:*)",
+      "Bash(uv add:*)"
+    ]
+  }
+}
