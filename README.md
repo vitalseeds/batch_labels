@@ -22,13 +22,47 @@ Copy `.env.example` to `.env` and edit to match your printer:
 cp .env.example .env
 ```
 
-```ini
-PRINTER_HOST=192.168.1.100   # printer IP
-PRINTER_PORT=9100            # RAW TCP port (Zebra standard)
-LABEL_WIDTH=4                # inches
-LABEL_HEIGHT=2               # inches
-LABEL_DPI=203                # GK420D native DPI
-```
+### Printer
+
+| Variable       | Default         | Description                   |
+|----------------|-----------------|-------------------------------|
+| `PRINTER_HOST` | `192.168.1.100` | Printer IP address            |
+| `PRINTER_PORT` | `9100`          | RAW TCP port (Zebra standard) |
+
+### Label dimensions
+
+| Variable       | Default | Description                   |
+|----------------|---------|-------------------------------|
+| `LABEL_WIDTH`  | `2.76`  | Label width in inches (70 mm) |
+| `LABEL_HEIGHT` | `1.42`  | Label height in inches (36 mm)|
+| `LABEL_DPI`    | `203`   | Printer DPI (GK420D = 203)    |
+
+### Fonts
+
+ZPL built-in fonts: `0`=scalable (any size), `A`=9 pt, `B`=11 pt, `D`=18 pt, `E`=28 pt, `F`=26 pt bold, `G`=60 pt, `H`=21 pt bold
+
+| Variable           | Default | Description             |
+|--------------------|---------|-------------------------|
+| `SKU_LABEL_FONT`   | `G`     | ZPL font for SKU text   |
+| `BATCH_LABEL_FONT` | `1`     | ZPL font for batch text |
+
+### Text size (mm)
+
+| Variable            | Default | Description                 |
+|---------------------|---------|-----------------------------|
+| `SKU_CHAR_HEIGHT`   | `18`    | SKU character height (mm)   |
+| `SKU_CHAR_WIDTH`    | `12`    | SKU character width (mm)    |
+| `BATCH_CHAR_HEIGHT` | `7`     | Batch character height (mm) |
+| `BATCH_CHAR_WIDTH`  | `4`     | Batch character width (mm)  |
+
+### Padding (mm)
+
+| Variable               | Default | Description                          |
+|------------------------|---------|--------------------------------------|
+| `SKU_PADDING_LEFT`     | `5`     | SKU distance from left edge (mm)     |
+| `SKU_PADDING_TOP`      | `5`     | SKU distance from top edge (mm)      |
+| `BATCH_PADDING_BOTTOM` | `6`     | Batch distance from bottom edge (mm) |
+| `BATCH_PADDING_RIGHT`  | `5`     | Batch distance from right edge (mm)  |
 
 ## Running
 

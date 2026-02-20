@@ -35,8 +35,8 @@ BATCH_CHAR_WIDTH  = float(os.getenv("BATCH_CHAR_WIDTH",   "4"))  # mm
 
 SKU_PADDING_LEFT   = float(os.getenv("SKU_PADDING_LEFT",   "5"))  # mm from left edge
 SKU_PADDING_TOP    = float(os.getenv("SKU_PADDING_TOP",    "5"))  # mm from top edge
-BATCH_PADDING_BOTTOM = float(os.getenv("BATCH_PADDING_BOTTOM", "6"))  # mm from bottom edge
-BATCH_PADDING_RIGHT  = float(os.getenv("BATCH_PADDING_RIGHT",  "5"))  # mm from right edge
+BATCH_PADDING_BOTTOM = float(os.getenv("BATCH_PADDING_BOTTOM", "4"))  # mm from bottom edge
+BATCH_PADDING_RIGHT  = float(os.getenv("BATCH_PADDING_RIGHT",  "4"))  # mm from right edge
 
 
 def build_zpl(sku: str, batch: str) -> str:
