@@ -6,7 +6,8 @@
       "Bash(uv add:*)",
       "WebFetch(domain:pypi.org)",
       "WebFetch(domain:github.com)",
-      "Bash(uv run python:*)"
+      "Bash(uv run python:*)",
+      "Bash(python3:*)"
     ]
   }
 }
