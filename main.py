@@ -200,6 +200,36 @@ _FONTS = [
 ]
 
 
+_ENV_FIELDS = [
+    ("label_width",        "LABEL_WIDTH"),
+    ("label_height",       "LABEL_HEIGHT"),
+    ("label_dpi",          "LABEL_DPI"),
+    ("sku_label_font",     "SKU_LABEL_FONT"),
+    ("batch_label_font",   "BATCH_LABEL_FONT"),
+    ("sku_char_height",    "SKU_CHAR_HEIGHT"),
+    ("sku_char_width",     "SKU_CHAR_WIDTH"),
+    ("batch_char_height",  "BATCH_CHAR_HEIGHT"),
+    ("batch_char_width",   "BATCH_CHAR_WIDTH"),
+    ("sku_padding_left",   "SKU_PADDING_LEFT"),
+    ("sku_padding_top",    "SKU_PADDING_TOP"),
+    ("batch_padding_bottom", "BATCH_PADDING_BOTTOM"),
+    ("batch_padding_right",  "BATCH_PADDING_RIGHT"),
+]
+
+
+def _env_text(cfg: LabelConfig) -> str:
+    vals = {
+        "label_width": cfg.label_width, "label_height": cfg.label_height,
+        "label_dpi": cfg.label_dpi, "sku_label_font": cfg.sku_label_font,
+        "batch_label_font": cfg.batch_label_font, "sku_char_height": cfg.sku_char_height,
+        "sku_char_width": cfg.sku_char_width, "batch_char_height": cfg.batch_char_height,
+        "batch_char_width": cfg.batch_char_width, "sku_padding_left": cfg.sku_padding_left,
+        "sku_padding_top": cfg.sku_padding_top, "batch_padding_bottom": cfg.batch_padding_bottom,
+        "batch_padding_right": cfg.batch_padding_right,
+    }
+    return "\n".join(f"{env}={vals[field]}" for field, env in _ENV_FIELDS)
+
+
 def _font_select(name: str, selected: str) -> str:
     options = "".join(
         f'<option value="{v}"{" selected" if v == selected else ""}>{label}</option>'
@@ -289,6 +319,12 @@ def render_page(
             note = f'<br>Did you mean: {", ".join(links)}?'
         warn_html = f'<p class="msg warn">Unknown SKU: <strong>{sku}</strong>.{note}</p>'
 
+    env_fields_js = json.dumps([[f, e] for f, e in _ENV_FIELDS])
+    env_html = f"""<details class="env-details">
+  <summary>Copy to .env</summary>
+  <textarea id="env-text" class="env-text" readonly rows="{len(_ENV_FIELDS)}">{_env_text(cfg)}</textarea>
+</details>"""
+
     layout_html = f"""
   <details class="layout-details">
     <summary>Label layout</summary>
@@ -355,6 +391,10 @@ def render_page(
                        letter-spacing: 0.05em; color: #888; margin-top: 10px; padding-top: 6px;
                        border-top: 1px solid #eee; }}
     .layout-section:first-child {{ margin-top: 0; border-top: none; }}
+    .env-details {{ margin-top: 16px; }}
+    .env-details summary {{ cursor: pointer; font-weight: bold; padding: 4px 0; user-select: none; }}
+    .env-text {{ width: 100%; font-family: monospace; font-size: 0.8rem; padding: 8px; box-sizing: border-box;
+                 border: 1px solid #ddd; background: #f8f8f8; resize: none; margin-top: 8px; }}
   </style>
 </head>
 <body>
@@ -379,13 +419,16 @@ def render_page(
     </div>
   </form>
   {preview_html}
+  {env_html}
   {sku_script}
   <script>
 (function() {{
-  var form = document.querySelector('form');
-  var box  = document.getElementById('preview-box');
-  var img  = document.getElementById('preview-img');
+  var form    = document.querySelector('form');
+  var box     = document.getElementById('preview-box');
+  var img     = document.getElementById('preview-img');
+  var envText = document.getElementById('env-text');
   var timer;
+  var ENV_FIELDS = {env_fields_js};
 
   function refresh() {{
     var sku   = form.querySelector('[name=sku]').value.trim();
@@ -394,20 +437,23 @@ def render_page(
     fetch('/preview-img', {{ method: 'POST', body: new FormData(form) }})
       .then(function(r) {{ return r.json(); }})
       .then(function(j) {{
-        if (j.src) {{
-          img.src = j.src;
-          box.style.display = '';
-        }} else {{
-          box.style.display = 'none';
-        }}
+        if (j.src) {{ img.src = j.src; box.style.display = ''; }}
+        else        {{ box.style.display = 'none'; }}
       }})
       .catch(function() {{}});
   }}
 
+  function updateEnv() {{
+    envText.value = ENV_FIELDS.map(function(p) {{
+      var el = form.querySelector('[name=' + p[0] + ']');
+      return p[1] + '=' + (el ? el.value : '');
+    }}).join('\n');
+  }}
+
   function schedule() {{ clearTimeout(timer); timer = setTimeout(refresh, 500); }}
 
-  form.addEventListener('input',  schedule);
-  form.addEventListener('change', schedule);
+  form.addEventListener('input',  function() {{ schedule(); updateEnv(); }});
+  form.addEventListener('change', function() {{ schedule(); updateEnv(); }});
 }})();
   </script>
 </body>
