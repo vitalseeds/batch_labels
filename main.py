@@ -26,9 +26,8 @@ def build_zpl(sku: str, batch: str) -> str:
     """Return a ZPL string for one label showing the SKU barcode and batch."""
     return (
         "^XA"
-        f"^FO40,20^A0N,45,35^FD{sku}^FS"          # SKU text
-        f"^FO40,80^BY2^BCN,90,Y,N,N^FD{sku}^FS"   # Code-128 barcode
-        f"^FO40,230^A0N,30,25^FDBatch: {batch}^FS" # Batch number
+        f"^FO40,20^A0N,45,35^FD{sku}^FS"           # SKU text
+        f"^FO40,100^A0N,30,25^FDBatch: {batch}^FS" # Batch number
         "^XZ"
     )
 
