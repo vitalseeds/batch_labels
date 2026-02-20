@@ -162,9 +162,12 @@ def render_page(
     if similar_skus is not None:
         note = ""
         if similar_skus:
-            items = ", ".join(f"<strong>{s}</strong>" for s in similar_skus)
-            note = f" Did you mean: {items}?"
-        warn_html = f'<p class="msg warn">Unknown SKU: <strong>{sku}</strong></p><p><em>{note}</em></p></br>'
+            links = []
+            for s in similar_skus:
+                onclick = f"document.querySelector('[name=sku]').value='{s}';return false;"
+                links.append(f'<a href="#" onclick="{onclick}">{s}</a>')
+            note = f'<br>Did you mean: {", ".join(links)}?'
+        warn_html = f'<p class="msg warn">Unknown SKU: <strong>{sku}</strong>.{note}</p>'
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -186,6 +189,7 @@ def render_page(
     .ok     {{ background: #e8f5e9; border: 1px solid #4caf50; }}
     .err    {{ background: #fdecea; border: 1px solid #f44336; }}
     .warn   {{ background: #fff8e1; border: 1px solid #ffc107; }}
+    .warn a {{ color: #b45309; font-weight: bold; }}
     .preview     {{ margin-top: 24px; }}
     .preview img {{ max-width: 100%; border: 1px solid #ccc; }}
   </style>
