@@ -52,10 +52,10 @@ LABEL_DPI     = int(os.getenv("LABEL_DPI", "203"))
 SKU_LABEL_FONT    = os.getenv("SKU_LABEL_FONT", "G")
 BATCH_LABEL_FONT  = os.getenv("BATCH_LABEL_FONT", "1")
 
-SKU_CHAR_HEIGHT   = float(os.getenv("SKU_CHAR_HEIGHT",   "18"))  # mm
-SKU_CHAR_WIDTH    = float(os.getenv("SKU_CHAR_WIDTH",    "12"))  # mm
-BATCH_CHAR_HEIGHT = float(os.getenv("BATCH_CHAR_HEIGHT",  "7"))  # mm
-BATCH_CHAR_WIDTH  = float(os.getenv("BATCH_CHAR_WIDTH",   "4"))  # mm
+SKU_CHAR_HEIGHT   = float(os.getenv("SKU_CHAR_HEIGHT",   "0"))  # mm; 0 = use font's own size
+SKU_CHAR_WIDTH    = float(os.getenv("SKU_CHAR_WIDTH",    "0"))  # mm; 0 = use font's own size
+BATCH_CHAR_HEIGHT = float(os.getenv("BATCH_CHAR_HEIGHT", "0"))  # mm; 0 = use font's own size
+BATCH_CHAR_WIDTH  = float(os.getenv("BATCH_CHAR_WIDTH",  "0"))  # mm; 0 = use font's own size
 
 SKU_PADDING_LEFT   = float(os.getenv("SKU_PADDING_LEFT",   "5"))  # mm from left edge
 SKU_PADDING_TOP    = float(os.getenv("SKU_PADDING_TOP",    "5"))  # mm from top edge
@@ -118,18 +118,16 @@ def find_similar_skus(sku: str) -> list[str] | None:
 def build_zpl(sku: str, batch: str, cfg: LabelConfig) -> str:
     """Return ZPL for a landscape label."""
     dpmm = cfg.label_dpi / 25.4
-    sku_h   = round(cfg.sku_char_height   * dpmm)
-    sku_w   = round(cfg.sku_char_width    * dpmm)
-    batch_h = round(cfg.batch_char_height * dpmm)
-    batch_w = round(cfg.batch_char_width  * dpmm)
     sku_x       = round(cfg.sku_padding_left * dpmm)
     sku_y       = round(cfg.sku_padding_top  * dpmm)
     batch_y     = round((cfg.label_height - cfg.batch_char_height - cfg.batch_padding_bottom) * dpmm)
     batch_field = round((cfg.label_width  - cfg.sku_padding_left  - cfg.batch_padding_right)  * dpmm)
+    sku_size   = f",{round(cfg.sku_char_height * dpmm)},{round(cfg.sku_char_width * dpmm)}" if cfg.sku_char_height and cfg.sku_char_width else ""
+    batch_size = f",{round(cfg.batch_char_height * dpmm)},{round(cfg.batch_char_width * dpmm)}" if cfg.batch_char_height and cfg.batch_char_width else ""
     return (
         "^XA"
-        f"^FO{sku_x},{sku_y}^A{cfg.sku_label_font}N,{sku_h},{sku_w}^FD{sku}^FS"
-        f"^FO{sku_x},{batch_y}^A{cfg.batch_label_font}N,{batch_h},{batch_w}^FB{batch_field},1,,R^FD{batch}^FS"
+        f"^FO{sku_x},{sku_y}^A{cfg.sku_label_font}N{sku_size}^FD{sku}^FS"
+        f"^FO{sku_x},{batch_y}^A{cfg.batch_label_font}N{batch_size}^FB{batch_field},1,,R^FD{batch}^FS"
         "^XZ"
     )
 
@@ -141,10 +139,12 @@ def build_label(sku: str, batch: str, cfg: LabelConfig) -> zpl_lib.Label:
     batch_line_w   = cfg.label_width  - cfg.sku_padding_left  - cfg.batch_padding_right
     label = zpl_lib.Label(cfg.label_height, cfg.label_width, dpmm)
     label.origin(cfg.sku_padding_left, cfg.sku_padding_top)
-    label.write_text(sku, char_height=cfg.sku_char_height, char_width=cfg.sku_char_width, font=cfg.sku_label_font)
+    sku_size   = {"char_height": cfg.sku_char_height,   "char_width": cfg.sku_char_width}   if cfg.sku_char_height   and cfg.sku_char_width   else {}
+    batch_size = {"char_height": cfg.batch_char_height, "char_width": cfg.batch_char_width} if cfg.batch_char_height and cfg.batch_char_width else {}
+    label.write_text(sku, font=cfg.sku_label_font, **sku_size)
     label.endorigin()
     label.origin(cfg.sku_padding_left, batch_origin_y)
-    label.write_text(batch, char_height=cfg.batch_char_height, char_width=cfg.batch_char_width, line_width=batch_line_w, justification="R", font=cfg.batch_label_font)
+    label.write_text(batch, font=cfg.batch_label_font, line_width=batch_line_w, justification="R", **batch_size)
     label.endorigin()
     return label
 
@@ -186,6 +186,26 @@ async def labelary_preview(zpl: str, cfg: LabelConfig) -> str:
     if r.status_code == 200:
         return "data:image/png;base64," + base64.b64encode(r.content).decode()
     return ""
+
+
+_FONTS = [
+    ("0", "0 — scalable"),
+    ("A", "A — 9 pt"),
+    ("B", "B — 11 pt"),
+    ("D", "D — 18 pt"),
+    ("E", "E — 28 pt"),
+    ("F", "F — 26 pt bold"),
+    ("G", "G — 60 pt"),
+    ("H", "H — 21 pt bold"),
+]
+
+
+def _font_select(name: str, selected: str) -> str:
+    options = "".join(
+        f'<option value="{v}"{" selected" if v == selected else ""}>{label}</option>'
+        for v, label in _FONTS
+    )
+    return f'<select name="{name}" class="font-select">{options}</select>'
 
 
 def render_page(
@@ -280,8 +300,8 @@ def render_page(
       <label>Height (mm)</label><input type="number" step="0.5" name="label_height" value="{cfg.label_height}">
       <label>DPI</label><input type="number" name="label_dpi" value="{cfg.label_dpi}">
       <span class="layout-section">Fonts</span>
-      <label>SKU font</label><input type="text" maxlength="2" name="sku_label_font" value="{cfg.sku_label_font}">
-      <label>Batch font</label><input type="text" maxlength="2" name="batch_label_font" value="{cfg.batch_label_font}">
+      <label>SKU font</label>{_font_select("sku_label_font", cfg.sku_label_font)}
+      <label>Batch font</label>{_font_select("batch_label_font", cfg.batch_label_font)}
       <span class="layout-section">SKU text size (mm)</span>
       <label>Height</label><input type="number" step="0.5" name="sku_char_height" value="{cfg.sku_char_height}">
       <label>Width</label><input type="number" step="0.5" name="sku_char_width" value="{cfg.sku_char_width}">
@@ -332,7 +352,7 @@ def render_page(
     .layout-details summary {{ cursor: pointer; font-weight: bold; padding: 4px 0; user-select: none; }}
     .layout-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; margin-top: 10px; align-items: center; }}
     .layout-grid label {{ font-weight: normal; margin: 0; font-size: 0.875rem; }}
-    .layout-grid input {{ font-size: 0.875rem; padding: 4px 6px; margin: 0; }}
+    .layout-grid input, .layout-grid .font-select {{ font-size: 0.875rem; padding: 4px 6px; margin: 0; width: 100%; box-sizing: border-box; }}
     .layout-section {{ grid-column: 1 / -1; font-size: 0.7rem; font-weight: bold; text-transform: uppercase;
                        letter-spacing: 0.05em; color: #888; margin-top: 10px; padding-top: 6px;
                        border-top: 1px solid #eee; }}
