@@ -19,8 +19,14 @@ import zpl as zpl_lib
 from dotenv import load_dotenv
 from fastapi import FastAPI, Form
 from fastapi.responses import HTMLResponse
+from pathlib import Path
+from platformdirs import user_data_dir
 
-load_dotenv(override=True)
+# Standalone: reads config from platform app-data dir (e.g. %LOCALAPPDATA%\batch-labels\.env)
+# Dev: local .env overrides via the second load_dotenv call
+CONFIG_DIR = Path(user_data_dir("batch-labels", False))
+load_dotenv(CONFIG_DIR / ".env")
+load_dotenv(override=True)  # local .env wins in dev
 
 SKU_LIST: set[str] = set()
 

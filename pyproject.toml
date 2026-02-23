@@ -20,6 +20,7 @@ dependencies = [
     "httpx>=0.27",
     "python-multipart>=0.0.22",
     "dotenv>=0.9.9",
+    "platformdirs>=4.0",
     "zpl>=0.1.13",
 ]
 

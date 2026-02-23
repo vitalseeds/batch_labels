@@ -58,8 +58,9 @@ a = Analysis(
         # Form parsing
         "multipart",
 
-        # .env loading
+        # .env loading and platform config dir
         "dotenv",
+        "platformdirs",
 
         # ZPL label generation (uses PIL for preview)
         "zpl",

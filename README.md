@@ -5,7 +5,8 @@ Prints ZPL labels in batches to a Zebra network printer.
 ## Install (Windows — standalone exe)
 
 1. Download `sku-labels.exe` from the [latest release](../../releases/latest)
-2. Create a `.env` file in the same folder (see [Configuration](#configuration))
+2. Create a `.env` config file at `%LOCALAPPDATA%\batch-labels\.env`
+   (e.g. `C:\Users\you\AppData\Local\batch-labels\.env`)
 3. Double-click `sku-labels.exe` — the app starts on `http://localhost:8765`
 
 ## Install (from source)
@@ -19,7 +20,13 @@ uv run uvicorn batch_labels.main:app --reload
 
 ## Configuration
 
-Create a `.env` file (copy `.env.example` to start):
+Config is read from a `.env` file. Copy `.env.example` to the appropriate location:
+
+| Platform | Path |
+|----------|------|
+| Windows (standalone) | `%LOCALAPPDATA%\batch-labels\.env` |
+| macOS (standalone) | `~/Library/Application Support/batch-labels/.env` |
+| Dev (any platform) | `.env` in the project root |
 
 ```ini
 PRINTER_HOST=192.168.1.100   # Printer IP
