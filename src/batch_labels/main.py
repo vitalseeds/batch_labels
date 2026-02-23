@@ -19,8 +19,14 @@ import zpl as zpl_lib
 from dotenv import load_dotenv
 from fastapi import FastAPI, Form
 from fastapi.responses import HTMLResponse
+from pathlib import Path
+from platformdirs import user_data_dir
 
-load_dotenv(override=True)
+# Standalone: reads config from platform app-data dir (e.g. %LOCALAPPDATA%\batch-labels\.env)
+# Dev: local .env overrides via the second load_dotenv call
+CONFIG_DIR = Path(user_data_dir("batch-labels", False))
+load_dotenv(CONFIG_DIR / ".env")
+load_dotenv(override=True)  # local .env wins in dev
 
 SKU_LIST: set[str] = set()
 
@@ -28,6 +34,14 @@ SKU_LIST: set[str] = set()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global SKU_LIST
+    env_app   = CONFIG_DIR / ".env"
+    env_local = Path(".env")
+    if env_app.exists():
+        print(f"Config:  {env_app}")
+    if env_local.exists():
+        print(f"Config:  {env_local.resolve()}")
+    if not env_app.exists() and not env_local.exists():
+        print(f"Config:  no .env found — expected {env_app}")
     sku_file = os.getenv("SKU_LIST_FILE")
     if sku_file:
         try:
@@ -355,13 +369,17 @@ def render_page(
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Batch Label Printer</title>
   <style>
-    body    {{ font-family: sans-serif; max-width: 480px; margin: 60px auto; padding: 0 16px; }}
+    body    {{ font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 16px; }}
+    h1      {{ font-size: 1.5rem; margin-top: 8px; margin-bottom: 4px; }}
     label   {{ display: block; margin-top: 14px; font-weight: bold; }}
-    input   {{ width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; font-size: 1rem; }}
-    .buttons {{ margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap; }}
-    button  {{ padding: 10px 28px; border: none; cursor: pointer; font-size: 1rem; }}
+    input   {{ width: 100%; padding: 12px; margin-top: 4px; box-sizing: border-box; font-size: 1rem;
+               border: 1px solid #ccc; border-radius: 4px; }}
+    .buttons {{ margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }}
+    button  {{ padding: 14px 28px; border: none; cursor: pointer; font-size: 1rem;
+               border-radius: 4px; width: 100%; }}
     button.btn-print   {{ background: #222; color: #fff; }}
     button.btn-print:hover {{ background: #444; }}
     button.btn-preview {{ background: #fff; color: #222; border: 1px solid #222; }}
@@ -378,7 +396,7 @@ def render_page(
                 list-style: none; margin: 0; padding: 0; z-index: 10;
                 box-shadow: 0 2px 4px rgba(0,0,0,.15); }}
     .ac-list:empty {{ display: none; }}
-    .ac-list li {{ padding: 8px 10px; cursor: pointer; }}
+    .ac-list li {{ padding: 12px 10px; cursor: pointer; }}
     .ac-list li:hover, .ac-list li.active {{ background: #f0f0f0; }}
     .preview     {{ margin-top: 24px; }}
     .preview img {{ max-width: 100%; border: 1px solid #ccc; }}
@@ -395,6 +413,12 @@ def render_page(
     .env-details summary {{ cursor: pointer; font-weight: bold; padding: 4px 0; user-select: none; }}
     .env-text {{ width: 100%; font-family: monospace; font-size: 0.8rem; padding: 8px; box-sizing: border-box;
                  border: 1px solid #ddd; background: #f8f8f8; resize: none; margin-top: 8px; }}
+    @media (min-width: 480px) {{
+      body    {{ padding: 60px 16px 16px; }}
+      h1      {{ font-size: 2rem; margin-top: 0; }}
+      .buttons {{ flex-direction: row; flex-wrap: wrap; }}
+      button  {{ width: auto; }}
+    }}
   </style>
 </head>
 <body>
