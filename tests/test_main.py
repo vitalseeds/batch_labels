@@ -4,12 +4,12 @@ import pytest
 import httpx
 from unittest.mock import patch, AsyncMock
 
-import main
-from main import app, build_zpl, find_similar_skus
+import batch_labels.main as main
+from batch_labels.main import app, build_zpl, find_similar_skus, LabelConfig
 
 
 def test_build_zpl_contains_sku_and_batch():
-    zpl = build_zpl("ABC123", "B001")
+    zpl = build_zpl("ABC123", "B001", LabelConfig())
     assert "ABC123" in zpl
     assert "B001" in zpl
     assert zpl.startswith("^XA")
@@ -32,8 +32,8 @@ async def test_index_returns_form(client):
 @pytest.mark.asyncio
 async def test_print_success(client):
     with (
-        patch("main.send_to_printer") as mock_print,
-        patch("main.labelary_preview", new_callable=AsyncMock, return_value=""),
+        patch("batch_labels.main.send_to_printer") as mock_print,
+        patch("batch_labels.main.labelary_preview", new_callable=AsyncMock, return_value=""),
     ):
         r = await client.post("/print", data={"sku": "SKU01", "batch": "B1", "copies": "3"})
 
@@ -46,8 +46,8 @@ async def test_print_success(client):
 @pytest.mark.asyncio
 async def test_print_printer_error(client):
     with (
-        patch("main.send_to_printer", side_effect=OSError("Connection refused")),
-        patch("main.labelary_preview", new_callable=AsyncMock, return_value=""),
+        patch("batch_labels.main.send_to_printer", side_effect=OSError("Connection refused")),
+        patch("batch_labels.main.labelary_preview", new_callable=AsyncMock, return_value=""),
     ):
         r = await client.post("/print", data={"sku": "SKU01", "batch": "B1", "copies": "1"})
 
@@ -60,8 +60,8 @@ async def test_print_printer_error(client):
 async def test_print_shows_preview_image(client):
     fake_data_url = "data:image/png;base64,ABC"
     with (
-        patch("main.send_to_printer"),
-        patch("main.labelary_preview", new_callable=AsyncMock, return_value=fake_data_url),
+        patch("batch_labels.main.send_to_printer"),
+        patch("batch_labels.main.labelary_preview", new_callable=AsyncMock, return_value=fake_data_url),
     ):
         r = await client.post("/print", data={"sku": "SKU99", "batch": "B9", "copies": "1"})
 
@@ -117,8 +117,8 @@ async def test_print_invalid_sku_shows_suggestions(client):
 async def test_print_force_bypasses_validation(client):
     with (
         patch.object(main, "SKU_LIST", {"ToGD", "ToML"}),
-        patch("main.send_to_printer"),
-        patch("main.labelary_preview", new_callable=AsyncMock, return_value=""),
+        patch("batch_labels.main.send_to_printer"),
+        patch("batch_labels.main.labelary_preview", new_callable=AsyncMock, return_value=""),
     ):
         r = await client.post("/print", data={"sku": "BOGUS", "batch": "B1", "copies": "1", "force": "1"})
     assert r.status_code == 200
@@ -129,7 +129,7 @@ async def test_print_force_bypasses_validation(client):
 async def test_preview_invalid_sku_shows_warning(client):
     with (
         patch.object(main, "SKU_LIST", {"ToGD", "ToML"}),
-        patch("main.zpl_preview", new_callable=AsyncMock, return_value=""),
+        patch("batch_labels.main.zpl_preview", new_callable=AsyncMock, return_value=""),
     ):
         r = await client.post("/preview", data={"sku": "BOGUS", "batch": "B1", "copies": "1"})
     assert r.status_code == 200

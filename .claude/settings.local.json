@@ -7,7 +7,9 @@
       "WebFetch(domain:pypi.org)",
       "WebFetch(domain:github.com)",
       "Bash(uv run python:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(uv sync:*)",
+      "Bash(uv build:*)"
     ]
   }
 }
