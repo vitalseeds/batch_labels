@@ -7,6 +7,7 @@ Usage:
 import re
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
@@ -19,19 +20,16 @@ def bump(version: str) -> None:
 
     pyproject = ROOT / "pyproject.toml"
     text = pyproject.read_text()
-    new_text = re.sub(r'^version = "[^"]+"', f'version = "{version}"', text, count=1, flags=re.MULTILINE)
-    if new_text == text:
-        print("Error: version not found in pyproject.toml")
-        sys.exit(1)
-    pyproject.write_text(new_text)
+    current = tomllib.loads(text)["project"]["version"]
+    text = text.replace(f'version = "{current}"', f'version = "{version}"', 1)
+    pyproject.write_text(text)
 
     standalone = ROOT / "src/batch_labels/standalone.py"
     text = standalone.read_text()
-    new_text = re.sub(r'^APP_VERSION = "[^"]+"', f'APP_VERSION = "{version}"', text, count=1, flags=re.MULTILINE)
-    if new_text == text:
+    if not re.search(r'APP_VERSION = "[^"]+"', text):
         print("Error: APP_VERSION not found in standalone.py")
         sys.exit(1)
-    standalone.write_text(new_text)
+    standalone.write_text(re.sub(r'APP_VERSION = "[^"]+"', f'APP_VERSION = "{version}"', text, count=1))
 
     subprocess.run(["git", "add", str(pyproject), str(standalone)], check=True, cwd=ROOT)
     subprocess.run(["git", "commit", "-m", f"Release v{version}"], check=True, cwd=ROOT)

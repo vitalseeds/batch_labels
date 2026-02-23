@@ -73,6 +73,7 @@ def check_and_apply_update() -> None:
 
 
 def main():
+    print(f"batch-labels v{APP_VERSION}")
     if os.getenv("UPDATE_ON_START", "").lower() in ("1", "true", "yes"):
         check_and_apply_update()
     uvicorn.run("batch_labels.main:app", host="0.0.0.0", port=8765, reload=False)
