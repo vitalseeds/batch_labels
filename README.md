@@ -35,6 +35,7 @@ LABEL_WIDTH=70               # mm
 LABEL_HEIGHT=36              # mm
 LABEL_DPI=203                # GK420D = 203
 SKU_LIST_FILE=skus.csv       # Optional: path to CSV of valid SKUs
+UPDATE_ON_START=true         # Optional: auto-update exe on startup (standalone only)
 ```
 
 Label layout (fonts, text size, padding) can also be set in `.env` — or adjusted live in the **Label layout** panel in the UI and copied out.
