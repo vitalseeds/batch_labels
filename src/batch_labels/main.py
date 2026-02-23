@@ -34,6 +34,14 @@ SKU_LIST: set[str] = set()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global SKU_LIST
+    env_app   = CONFIG_DIR / ".env"
+    env_local = Path(".env")
+    if env_app.exists():
+        print(f"Config:  {env_app}")
+    if env_local.exists():
+        print(f"Config:  {env_local.resolve()}")
+    if not env_app.exists() and not env_local.exists():
+        print(f"Config:  no .env found — expected {env_app}")
     sku_file = os.getenv("SKU_LIST_FILE")
     if sku_file:
         try:
