@@ -74,6 +74,12 @@ def check_and_apply_update() -> None:
 
 
 def main():
+    from dotenv import load_dotenv
+    from pathlib import Path
+    from platformdirs import user_data_dir
+    load_dotenv(Path(user_data_dir("batch-labels", False)) / ".env")
+    load_dotenv(override=True)
+
     print(f"batch-labels v{APP_VERSION}")
     if os.getenv("UPDATE_ON_START", "").lower() in ("1", "true", "yes"):
         check_and_apply_update()
