@@ -48,7 +48,10 @@ def check_and_apply_update() -> None:
 
         tmp_fd, tmp_path = tempfile.mkstemp(dir=exe_dir, suffix=".exe")
         os.close(tmp_fd)
-        urllib.request.urlretrieve(exe_url, tmp_path)
+        with urllib.request.urlopen(exe_url, timeout=30) as resp:
+            with open(tmp_path, "wb") as f:
+                while chunk := resp.read(65536):
+                    f.write(chunk)
 
         bat_fd, bat_path = tempfile.mkstemp(dir=exe_dir, suffix=".bat")
         os.close(bat_fd)
@@ -70,7 +73,8 @@ def check_and_apply_update() -> None:
 
 
 def main():
-    check_and_apply_update()
+    if os.getenv("UPDATE_ON_START", "").lower() in ("1", "true", "yes"):
+        check_and_apply_update()
     uvicorn.run("batch_labels.main:app", host="0.0.0.0", port=8765, reload=False)
 
 
