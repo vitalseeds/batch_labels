@@ -9,7 +9,7 @@ import urllib.request
 import uvicorn
 
 # Keep in sync with pyproject.toml [project] version
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.0.1"
 GITHUB_REPO = "vitalseeds/batch_labels"
 
 
