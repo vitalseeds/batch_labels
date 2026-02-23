@@ -10,7 +10,7 @@ packages = ["src/batch_labels"]
 
 [project]
 name = "batch-labels"
-version = "1.0.1"
+version = "1.0.2"
 description = "Batch ZPL label printer for Zebra printers"
 readme = "README.md"
 requires-python = ">=3.14"
