@@ -26,6 +26,7 @@ def check_and_apply_update() -> None:
         return
 
     try:
+        print(f"Checking for updates... (current version: v{APP_VERSION})")
         url = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
         req = urllib.request.Request(url, headers={"User-Agent": "sku-labels"})
         with urllib.request.urlopen(req, timeout=5) as resp:
