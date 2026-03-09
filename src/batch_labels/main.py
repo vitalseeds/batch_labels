@@ -138,8 +138,11 @@ def build_zpl(sku: str, batch: str, cfg: LabelConfig) -> str:
     batch_field = round((cfg.label_width  - cfg.sku_padding_left  - cfg.batch_padding_right)  * dpmm)
     sku_size   = f",{round(cfg.sku_char_height * dpmm)},{round(cfg.sku_char_width * dpmm)}" if cfg.sku_char_height and cfg.sku_char_width else ""
     batch_size = f",{round(cfg.batch_char_height * dpmm)},{round(cfg.batch_char_width * dpmm)}" if cfg.batch_char_height and cfg.batch_char_width else ""
+    pw = round(cfg.label_width  * dpmm)
+    ll = round(cfg.label_height * dpmm)
     return (
         "^XA"
+        f"^PW{pw}^LL{ll}"
         f"^FO{sku_x},{sku_y}^A{cfg.sku_label_font}N{sku_size}^FD{sku}^FS"
         f"^FO{sku_x},{batch_y}^A{cfg.batch_label_font}N{batch_size}^FB{batch_field},1,,R^FD{batch}^FS"
         "^XZ"
@@ -386,6 +389,9 @@ def render_page(
     button.btn-preview:hover {{ background: #f0f0f0; }}
     button.btn-force   {{ background: #fff; color: #b71c1c; border: 1px solid #b71c1c; }}
     button.btn-force:hover {{ background: #fdecea; }}
+    a.btn-clear {{ padding: 14px 28px; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem;
+                   background: #fff; color: #555; text-decoration: none; text-align: center; cursor: pointer; }}
+    a.btn-clear:hover {{ background: #f0f0f0; }}
     .msg    {{ margin-top: 16px; padding: 10px 14px; border-radius: 4px; }}
     .ok     {{ background: #e8f5e9; border: 1px solid #4caf50; }}
     .err    {{ background: #fdecea; border: 1px solid #f44336; }}
@@ -439,7 +445,8 @@ def render_page(
     <div class="buttons">
       <button class="btn-preview" type="submit" formaction="/preview">Preview</button>
       <button class="btn-print"   type="submit">Print Labels</button>
-      <button class="btn-force"   type="submit" name="force" value="1">Print Anyway</button>
+      {"<button class=\"btn-force\" type=\"submit\" name=\"force\" value=\"1\">Print Anyway</button>" if similar_skus is not None else ""}
+      <a class="btn-clear" href="/">Clear</a>
     </div>
   </form>
   {preview_html}
